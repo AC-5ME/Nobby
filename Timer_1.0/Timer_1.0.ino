@@ -1,43 +1,38 @@
 #include <M5Dial.h>
 
+//static m5::touch_state_t prev_state;
+
 time_t ttset = 0;
 time_t ttold = 0;
 int timer = 0;
 int timeron = 0;
 int sx, sy;
-int addtime = 1;
+int addtime = 300;      //default time 5 mins
 int alarming = 0;
 
-int bkcolor = BLACK;
+int col1 = WHITE;     //second arc
 
+int timer_bkcolor = BLACK;      //background color
 long oldPosition = -999;
 
 void setup() {	
 	auto cfg = M5.config();
 	M5Dial.begin(cfg, true, false);
-	Serial.begin(115200);
-	//M5.Display.fillScreen();
+	//Serial.begin(115200);
 
-	sx = M5Dial.Display.width() / 2;
+	sx = M5Dial.Display.width() / 2;      //center of display
 	sy = M5Dial.Display.height() / 2;
 
-  //Timer digits
-  M5Dial.Display.fillScreen(bkcolor);
+  M5Dial.Display.setBrightness(255);      //set max brightness
+
+  M5Dial.Display.fillScreen(timer_bkcolor);
   M5Dial.Display.setTextDatum(middle_center);	
 
-  /*M5Dial.Display.setTextFont(&fonts::Font6);
-	M5Dial.Display.setTextColor(GREEN, bkcolor);
-	M5Dial.Display.setTextDatum(middle_center);	
-	M5Dial.Display.setTextFont(8);
-	M5Dial.Display.setTextSize(0.75);
-	*/
-
-  //Label
-	M5Dial.Display.setTextFont(&fonts::Orbitron_Light_32);
-	M5Dial.Display.setTextColor(WHITE, bkcolor);
-	M5Dial.Display.setTextSize(0.5);
+	M5Dial.Display.setTextFont(&fonts::FreeSansBold12pt7b);      //Label
+	M5Dial.Display.setTextColor(WHITE, timer_bkcolor);
+	M5Dial.Display.setTextSize(0.8);
 	M5Dial.Display.drawString("COOL DOWN", sx, sy-40);
-	M5Dial.Display.fillRect(sx+8, sy+30, 60, 4, DARKCYAN);
+	M5Dial.Display.fillRect(sx+25, sy+40, 60, 4, WHITE);     //X and Y to X1 and Y1, width W, height H, color
 
   auto dt = M5Dial.Rtc.getDateTime();
 	ttset = dt2tt(dt, 1);
@@ -46,17 +41,17 @@ void setup() {
 
 
 time_t dt2tt(m5::rtc_datetime_t dt, int pp) {
-	struct tm tm;
-	tm.tm_year  = dt.date.year - 1900;    // 年 [1900からの経過年数]
-	tm.tm_mon   = dt.date.month - 1;   // 月 [0-11] 0から始まることに注意
-	tm.tm_mday  = dt.date.date;    // 日 [1-31]
-	tm.tm_wday  = dt.date.weekDay; // 曜日 [0:日 1:月 ... 6:土]
-	tm.tm_hour  = dt.time.hours;   // 時 [0-23]
-	tm.tm_min   = dt.time.minutes; // 分 [0-59]
-	tm.tm_sec   = dt.time.seconds; // 秒 [0-61]
-	tm.tm_isdst = -1;              // 夏時間フラグ
-	
-	if(pp != 0){
+struct tm tm;
+	tm.tm_year  = dt.date.year - 1900;    
+	tm.tm_mon   = dt.date.month - 1;
+	tm.tm_mday  = dt.date.date;
+	tm.tm_wday  = dt.date.weekDay;
+	tm.tm_hour  = dt.time.hours;
+	tm.tm_min   = dt.time.minutes;
+	tm.tm_sec   = dt.time.seconds;
+	tm.tm_isdst = -1;
+
+	/*if(pp != 0){
 		Serial.printf("%04d/%02d/%02d %02d:%02d:%02d\n"
 		, tm.tm_year + 1900
 		, tm.tm_mon  + 1
@@ -66,59 +61,67 @@ time_t dt2tt(m5::rtc_datetime_t dt, int pp) {
 		, tm.tm_sec 
 		);
 	}
-	
+	*/
 	time_t tt = mktime(&tm) + (8 * 60 * 60);
 	return(tt);
 }
 
-
 void loop() {
 	M5Dial.update();
-	
+
 	int min;
 	int sec;
 	char buf[100];
 	
-	if(M5Dial.BtnA.wasPressed()){
+	if(M5Dial.BtnA.wasPressed()){     //Start timer
 		if(alarming == 0 && timeron == 0){
 			alarming = 0;
 			auto dt = M5Dial.Rtc.getDateTime();
 			ttold = dt2tt(dt, 0);
 			ttset = ttold + timer;
 			timeron = 1;
-			Serial.println("TIMER START");
 		}
 
 		else{
-			Serial.println("TIMER STOP");
-			alarming = 0;
+			alarming = 0;     //Stop timer
 			timeron = 0;
 			
 			min = (timer / 60);
 			sec = (timer % 60);
-			M5Dial.Display.setTextSize(0.75);
-			M5Dial.Display.setTextColor(GREEN, bkcolor);
+
+			M5Dial.Display.setTextSize(0.8);
+			M5Dial.Display.setTextColor(WHITE, timer_bkcolor);
 			M5Dial.Display.setTextFont(8);
 			sprintf(buf, "%02d:%02d", min, sec);
 			M5Dial.Display.drawString(buf, sx, sy);
+
 			drawarc(min, sec, 0);
 		}
 	}
 	
-	auto t = M5Dial.Touch.getDetail();
-	if(t.state == 3){  // touch_begin
+	auto t = M5Dial.Touch.getDetail();      //touch detected?
+
+	if(t.state == 1 && timeron == 0){     //tap
+
 		if(addtime == 1){
 			addtime = 60;
-			M5Dial.Display.fillRect(sx+8, sy+30, 60, 4, bkcolor);
-			M5Dial.Display.fillRect(sx-68, sy+30, 60, 4, CYAN);
+			M5Dial.Display.fillRect(sx+25, sy+40, 60, 4, timer_bkcolor);
+			M5Dial.Display.fillRect(sx-80, sy+40, 60, 4, WHITE);
 		}
 		else{
 			addtime = 1;
-			M5Dial.Display.fillRect(sx+8, sy+30, 60, 4, DARKCYAN);
-			M5Dial.Display.fillRect(sx-68, sy+30, 60, 4, bkcolor);
+			M5Dial.Display.fillRect(sx+25, sy+40, 60, 4, WHITE);
+			M5Dial.Display.fillRect(sx-80, sy+40, 60, 4, timer_bkcolor);
 		}
-	}
-	
+  }
+
+    	if(t.state == 13){     //9 = flick, 13 = drag
+        M5Dial.Display.setTextFont(&fonts::FreeSansBold12pt7b);      //Label
+	      M5Dial.Display.setTextColor(WHITE, timer_bkcolor);
+	      M5Dial.Display.setTextSize(0.8);
+	      M5Dial.Display.drawString("FLICK!", sx, sy-40);
+      }
+
 	if(timeron == 0){
     long newPosition = (M5Dial.Encoder.read()/4);
 		int redraw = 0;
@@ -148,11 +151,12 @@ void loop() {
 			}
 			oldPosition = newPosition;
 		}
+
 		if(redraw != 0){
 			min = (timer / 60);
 			sec = (timer % 60);
-			M5Dial.Display.setTextSize(0.75);
-			M5Dial.Display.setTextColor(GREEN, bkcolor);
+			M5Dial.Display.setTextSize(0.8);
+			M5Dial.Display.setTextColor(WHITE, timer_bkcolor);
 			M5Dial.Display.setTextFont(8);
 			sprintf(buf, "%02d:%02d", min, sec);
 			M5Dial.Display.drawString(buf, sx, sy);
@@ -180,12 +184,12 @@ void loop() {
 		if((ttset - tt) >= 0){
 			min = ((ttset - tt) / 60);
 			sec = ((ttset - tt) % 60);
-			M5Dial.Display.setTextSize(0.75);
-			M5Dial.Display.setTextColor(GREEN, bkcolor);
+			M5Dial.Display.setTextSize(0.8);
+			M5Dial.Display.setTextColor(WHITE, timer_bkcolor);
 			M5Dial.Display.setTextFont(8);
 			sprintf(buf, "%02d:%02d", min, sec);
 			M5Dial.Display.drawString(buf, sx, sy);
-			Serial.println(buf);
+			//Serial.println(buf);
 			
 			drawarc(min, sec, 1);
 		}
@@ -195,36 +199,20 @@ void loop() {
 			}
 			alarming = 1;
 			//M5Dial.Speaker.tone(4000, 100);
-			delay(100);
+			//delay(100);
 			//M5Dial.Speaker.tone(4000, 100);
 		}
 		ttold = tt;
-	}
-	else{
-		delay(20);
-	}
-	
+	}	
 }
 
 
-void drawarc(int min, int sec, int mode)
-{
-	int col1;
-	int col2;
-	int rmin;
-	int rsec;
+
+void drawarc(int min, int sec, int mode){
 	
-	if(mode == 0){
-		col1 = DARKCYAN;
-		col2 = CYAN;
-	}
-	else{
-		col1 = DARKGREEN;
-		col2 = GREEN;
-	}
-	
-	rmin = min * 6;
-	rsec = sec * 6;
+	int rmin = min * 6;
+	int rsec = sec * 6;
+
 	if(rsec < 90){
 		M5Dial.Display.fillArc(sx, sy, 102, 110, 270, 270+rsec, col1);
 		M5Dial.Display.fillArc(sx, sy, 102, 110, 270+rsec, 360, BLACK);
@@ -234,16 +222,6 @@ void drawarc(int min, int sec, int mode)
 		M5Dial.Display.fillArc(sx, sy, 102, 110, 270, 360, col1);
 		M5Dial.Display.fillArc(sx, sy, 102, 110, 0, rsec-90, col1);
 		M5Dial.Display.fillArc(sx, sy, 102, 110, rsec-90, 270, BLACK);
-	}
-	if(rmin < 90){
-		M5Dial.Display.fillArc(sx, sy, 112, 120, 270, 270+rmin, col2);
-		M5Dial.Display.fillArc(sx, sy, 112, 120, 270+rmin, 360, BLACK);
-		M5Dial.Display.fillArc(sx, sy, 112, 120, 0, 270, BLACK);
-	}
-	else{
-		M5Dial.Display.fillArc(sx, sy, 112, 120, 270, 360, col2);
-		M5Dial.Display.fillArc(sx, sy, 112, 120, 0, rmin-90, col2);
-		M5Dial.Display.fillArc(sx, sy, 112, 120, rmin-90, 270, BLACK);
 	}
 }
 
