@@ -1,3 +1,6 @@
 # Nobby
-Multi-function (eventually) self-launching glider display 
-![IMG_0476](https://github.com/user-attachments/assets/380057b7-8b86-46e7-95f0-6c2f4f9983aa)
+Multi-function self-launching glider display: 
+automates cool-down timing, magnetometer compass, tailbeacon controller (eventually)
+![IMG_0532](https://github.com/user-attachments/assets/493f5045-d8d0-46be-abe3-a38e8b9b6621)
+![IMG_0531](https://github.com/user-attachments/assets/516c7c49-e209-4100-9990-588169252220)
+![IMG_0530](https://github.com/user-attachments/assets/035f390f-9f4e-4a23-a005-792072350df6)
