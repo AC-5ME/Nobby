@@ -9,21 +9,19 @@ eCompass (Digital Magnetometer): Real-time heading via LSM303AGR sensor.
 Tailbeacon Controller: (Planned) Automates tailbeacon operation for safety/compliance.
 Accelerometer: Monitors acceleration and orientation (via LSM303AGR).
 Audio Input: (Planned) Integration with MAX 4466 for future acoustic/event sensing.
-Hardware
 
+Hardware:
 Microcontroller: ESP32 (M5Dial platform)
 Magnetometer/Accelerometer: LSM303AGR
 Microphone/Audio Sensor: MAX 4466
 Display: Integrated with M5Dial
-Project Status
 
+Project Status:
 Core features (cool-down timer, eCompass) are implemented.
 Tailbeacon control and advanced accelerometer/audio features are planned or in development.
-Getting Started
 
+Getting Started:
 
-sh
-git clone https://github.com/AC-5ME/Nobby.git
 Build Requirements
 
 PlatformIO or Arduino IDE with ESP32 support
@@ -33,8 +31,8 @@ Wiring
 LSM303AGR connected via I2C to ESP32
 MAX 4466 connected to ESP32 analog input
 Display is integrated on the M5Dial
-Upload and Run
 
+Upload and Run:
 Use PlatformIO or Arduino IDE to build and flash the firmware to your M5Dial device.
 Usage
 
