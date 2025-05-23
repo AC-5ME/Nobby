@@ -1,4 +1,4 @@
-Nobby
+NOBBY
 
 Nobby is a multi-function, self-launching glider display and control system. It automates essential glider operations—making flights easier, safer, and more efficient.
 
@@ -21,7 +21,6 @@ Core features (cool-down timer, eCompass) are implemented.
 Tailbeacon control and advanced accelerometer/audio features are planned or in development.
 Getting Started
 
-Clone the repository
 
 sh
 git clone https://github.com/AC-5ME/Nobby.git
