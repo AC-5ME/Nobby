@@ -1,6 +1,6 @@
 NOBBY
 
-Nobby is a multi-function, self-launching glider display and control system. It automates essential glider operations—making flights easier, safer, and more efficient.
+Nobby is a multi-function, self-launching glider display and control system. It automates essential glider operations—making flights easier, safer, and more funner.
 
 Features
 
