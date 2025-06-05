@@ -18,14 +18,15 @@ Display: Integrated with M5Dial
 
 Project Status:
 Core features (cool-down timer, eCompass) are implemented.
-Tailbeacon control and advanced accelerometer/audio features are planned or in development.
+Tailbeacon control in development.
 
 Getting Started:
 
 Build Requirements
 
 PlatformIO or Arduino IDE with ESP32 support
-Required libraries for M5Dial, LSM303AGR, and any display or sensor drivers
+Required libraries for M5Dial: 1.0, M5GFX 0.2.8, M5Unified 0.2.0, LSM303AGR
+
 Wiring
 
 LSM303AGR connected via I2C to ESP32
@@ -36,9 +37,9 @@ Upload and Run:
 Use PlatformIO or Arduino IDE to build and flash the firmware to your M5Dial device.
 Usage
 
-Power on the device; the display will show compass heading and cool-down timer.
+Power on the device; the display will show compass initially
 Use the built-in interface to navigate additional features.
-(Planned) Tailbeacon and audio features will be accessible as development progresses.
+(Planned) Tailbeacon will be accessible as development progresses.
 ![IMG_0532](https://github.com/user-attachments/assets/493f5045-d8d0-46be-abe3-a38e8b9b6621)
 ![IMG_0531](https://github.com/user-attachments/assets/516c7c49-e209-4100-9990-588169252220)
 ![IMG_0530](https://github.com/user-attachments/assets/035f390f-9f4e-4a23-a005-792072350df6)
