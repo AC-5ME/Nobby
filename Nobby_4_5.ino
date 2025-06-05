@@ -30,6 +30,8 @@ enum State {
 constexpr State pageOrder[] = { timer, compass, beacon, accel, enl_display };
 constexpr int NUM_PAGES = sizeof(pageOrder) / sizeof(pageOrder[0]);
 int currentPageIdx = 1; // start at compass
+static int swipeStartX = -1;
+static int swipeActive = 0;
 
 // ================== GLOBALS ===================
 volatile int samples[BLOCK_SIZE];
@@ -52,8 +54,7 @@ bool isTimer_running = false;
 unsigned long countdownTime = 300000;
 unsigned long timeRemaining = 0;
 unsigned long startTime = 0;
-unsigned long last_runTime = 5;
-long oldPosition = 50;
+unsigned long last_runTime = 5;   //detect new engine run logic
 
 // Accelerometer & Magnetometer
 float accel_Z = 1.0;
@@ -92,22 +93,35 @@ void PAGE();
 void TIMER();
 
 void HeadingIndicator(float heading, int centerX, int centerY, int radius) {
+  static LGFX_Sprite sprite(&M5Dial.Display);
+  static bool initialized = false;
+  if (!initialized) {
+    sprite.createSprite(radius * 2 + 10, radius * 2 + 10); // Buffer area for all graphics
+    sprite.setTextDatum(middle_center);
+    initialized = true;
+  }
+  sprite.fillSprite(BLACK);
+
+  // Center of sprite relative to its local coords
+  int sx = (radius + 5);
+  int sy = (radius + 5);
+
   // tick marks and numbers
   for (int angle = 0; angle < 360; angle += 30) {
     float dispAngle = (angle - heading) * DEG_TO_RAD;
-    int xStart = centerX + (radius - 15) * sin(dispAngle);
-    int yStart = centerY - (radius - 15) * cos(dispAngle);
-    int xEnd = centerX + (radius)*sin(dispAngle);
-    int yEnd = centerY - (radius)*cos(dispAngle);
-    M5Dial.Display.drawLine(xStart, yStart, xEnd, yEnd, TFT_WHITE);
+    int xStart = sx + (radius - 10) * sin(dispAngle);
+    int yStart = sy - (radius - 10) * cos(dispAngle);
+    int xEnd = sx + (radius) * sin(dispAngle);
+    int yEnd = sy - (radius) * cos(dispAngle);
+    sprite.drawLine(xStart, yStart, xEnd, yEnd, TFT_WHITE);
 
     if (angle % 90 != 0) {
       char buf[3];
       snprintf(buf, sizeof(buf), "%d", (angle == 0) ? 36 : angle / 10);
-      int tx = centerX + (radius - 25) * sin(dispAngle);
-      int ty = centerY - (radius - 25) * cos(dispAngle);
-      M5Dial.Display.setTextColor(TFT_WHITE, BLACK);
-      M5Dial.Display.drawCentreString(buf, tx, ty - 8, 2);
+      int tx = sx + (radius - 25) * sin(dispAngle);
+      int ty = sy - (radius - 25) * cos(dispAngle);
+      sprite.setTextColor(TFT_WHITE, BLACK);
+      sprite.drawCenterString(buf, tx, ty - 8, 2);
     }
   }
 
@@ -117,21 +131,21 @@ void HeadingIndicator(float heading, int centerX, int centerY, int radius) {
     int angle;
     uint16_t color;
   } cardinals[] = {
-    { "N", 0, TFT_YELLOW }, { "E", 90, TFT_YELLOW }, { "S", 180, TFT_YELLOW }, { "W", 270, TFT_YELLOW }
+    { "N", 0, TFT_ORANGE }, { "E", 90, TFT_ORANGE }, { "S", 180, TFT_ORANGE }, { "W", 270, TFT_ORANGE }
   };
   for (auto& c : cardinals) {
     float dispAngle = (c.angle - heading) * DEG_TO_RAD;
-    int tx = centerX + (radius - 30) * sin(dispAngle);
-    int ty = centerY - (radius - 30) * cos(dispAngle);
-    M5Dial.Display.setTextSize(1.5);  // Increase the number for bigger text
-    M5Dial.Display.setTextColor(c.color, BLACK);
-    M5Dial.Display.drawCentreString(c.label, tx, ty - 12, 4);
+    int tx = sx + (radius - 30) * sin(dispAngle);
+    int ty = sy - (radius - 30) * cos(dispAngle);
+    sprite.setTextSize(1.5);  // Increase the number for bigger text
+    sprite.setTextColor(c.color, BLACK);
+    sprite.drawCenterString(c.label, tx, ty - 12, 4);
   }
-  M5Dial.Display.setTextColor(TFT_WHITE, BLACK);
+  sprite.setTextColor(TFT_WHITE, BLACK);
 
   // Fighter jet outline
   int size = 45;  // Adjust for your display
-  int cx = centerX, cy = centerY + 15;
+  int cx = sx, cy = sy + 15;
 
   // Jet outline points
   float px[] = {
@@ -151,9 +165,12 @@ void HeadingIndicator(float heading, int centerX, int centerY, int radius) {
       int y0 = cy + int(py[i] * size);
       int x1 = cx + int(px[i + 1] * size) + j;
       int y1 = cy + int(py[i + 1] * size);
-      M5Dial.Display.drawLine(x0, y0, x1, y1, WHITE);
+      sprite.drawLine(x0, y0, x1, y1, WHITE);
     }
   }
+
+  // Push sprite to display (centered at centerX, centerY)
+  sprite.pushSprite(centerX - sx, centerY - sy);
 }
 
 /**
@@ -256,9 +273,34 @@ void ACCEL() {
   float G = -(smoothed_acc_z / 1000.0);
 
   snprintf(G_buf, sizeof(G_buf), " %.1f ", G);
-  M5Dial.Display.drawString(G_buf, sx, sy + 20);
-}
 
+  // Create and use a sprite for flicker-free drawing
+  static LGFX_Sprite sprite(&M5Dial.Display);
+  static bool initialized = false;
+  int textW = 320, textH = 120; // Large enough for big smooth font
+  if (!initialized) {
+    sprite.createSprite(textW, textH);
+    sprite.setTextDatum(middle_center);
+    initialized = true;
+  }
+  sprite.fillSprite(BLACK);
+
+  // Use a built-in smooth font and scale it up
+  sprite.setFont(&fonts::FreeSans24pt7b);  // Smooth font
+  sprite.setTextColor(TFT_GREEN, BLACK);
+
+  // Print G_buf centered at double size (scale=2.0)
+  float scale = 3.0f;
+  int x = textW / 2;
+  int y = textH / 2;
+  sprite.setTextSize(scale); // Scaling vector font
+
+  sprite.drawString(G_buf, x, y);
+
+  // Reset font if needed elsewhere: sprite.setFont(&fonts::Font0);
+
+  sprite.pushSprite(sx - textW/2, sy + 20 - textH/2);
+}
 /**
  * Display beacon channel (fixed string)
  */
@@ -334,9 +376,6 @@ void COMPASS() {
   smoothed_heading = fmod(smoothed_heading + 360.0, 360.0);
 
   if ((millis() - lastDisplayTime) > 500) {
-    // Clear area (or whole screen)
-    PAGE();
-    // Draw aircraft-style heading indicator
     HeadingIndicator(smoothed_heading, sx, sy, 110);  // 110 for radius; adjust as needed
     lastDisplayTime = millis();
   }
@@ -536,37 +575,37 @@ void TIMER() {
  * Main loop: update state, process touch, call screen handlers
  */
 void loop() {
-  static unsigned long lastSwipeMillis = 0;
-  const unsigned long swipeDebounceTime = 0;  // ms
-  static int lastSwipeState = 0; // for rising edge detection
+  const unsigned long swipeDebounceTime = 300;  // ms
 
   M5Dial.update();
   auto t = M5Dial.Touch.getDetail();
   //check for engine run
   ENL_MEASURE();
   
-  // Only process on swipe state rising edge
-  if (t.state == 9 && lastSwipeState != 9) {
-    unsigned long now = millis();
-    if (now - lastSwipeMillis > swipeDebounceTime) {
-      lastSwipeMillis = now;
-      if (t.x < sx) { // swipe left (go back)
-        currentPageIdx = (currentPageIdx - 1 + NUM_PAGES) % NUM_PAGES;
-      } else {        // swipe right (go forward)
-        currentPageIdx = (currentPageIdx + 1) % NUM_PAGES;
-      }
-      PAGE();
-      switch (pageOrder[currentPageIdx]) {
-        case timer:        M5Dial.Display.drawString("TIMER", sx, sy - 50); break;
-        case compass:      M5Dial.Display.drawString("HEADING", sx, sy - 50); break;
-        case beacon:       M5Dial.Display.drawString("BEACON", sx, sy - 50); break;
-        case accel:        M5Dial.Display.drawString("ACCEL", sx, sy - 50); break;
-        case enl_display:  M5Dial.Display.drawString("ENL", sx, sy - 100); break;
-      }
+ if (t.state == 1 && !swipeActive) { // 1 = touch begin
+    swipeStartX = t.x;
+    swipeActive = 1;
+}
+if ((t.state == 0 || t.state == 3) && swipeActive && swipeStartX != -1) { // 0 = released, 3 = touch release
+    int dx = t.x - swipeStartX;
+    if (abs(dx) > 40) {
+        if (dx < 0) { // swipe left (go back)
+            currentPageIdx = (currentPageIdx - 1 + NUM_PAGES) % NUM_PAGES;
+        } else {      // swipe right (go forward)
+            currentPageIdx = (currentPageIdx + 1) % NUM_PAGES;
+        }
+        PAGE();
+        switch (pageOrder[currentPageIdx]) {
+            case timer:        M5Dial.Display.drawString("TIMER", sx, sy - 50); break;
+            case compass:      break;
+            case beacon:       M5Dial.Display.drawString("BEACON", sx, sy - 50); break;
+            case accel:        M5Dial.Display.drawString("ACCEL", sx, sy - 70); break;
+            case enl_display:  M5Dial.Display.drawString("ENL", sx, sy - 100); break;
+        }
     }
-  }
-  lastSwipeState = t.state;
-
+    swipeStartX = -1;
+    swipeActive = 0;
+}
   // Call the appropriate handler
   switch (pageOrder[currentPageIdx]) {
     case timer: TIMER(); break;
